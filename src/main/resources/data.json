@@ -1,0 +1,101 @@
+{
+  "trainingTypes": [
+    {
+      "trainingTypeName": "Yoga & Flexibility"
+    },
+    {
+      "trainingTypeName": "Cardio Training"
+    },
+    {
+      "trainingTypeName": "Strength Training"
+    },
+    {
+      "trainingTypeName": "High-Intensity Interval Training (HIIT)"
+    },
+    {
+      "trainingTypeName": "Endurance Training"
+    }
+  ],
+  "trainees": [
+    {
+      "user": {
+        "firstName": "Liam",
+        "lastName": "Anderson"
+      },
+      "dateOfBirth": "1996-06-15",
+      "address": "789 Oak St"
+    },
+    {
+      "user": {
+        "firstName": "Ethan",
+        "lastName": "Williams"
+      },
+      "dateOfBirth": "1998-09-23",
+      "address": "321 Maple Ave"
+    }
+  ],
+  "trainers": [
+    {
+      "user": {
+        "firstName": "Oliver",
+        "lastName": "Martinez"
+      },
+      "specialization": "Yoga & Flexibility"
+    },
+    {
+      "user": {
+        "firstName": "Sophia",
+        "lastName": "Taylor"
+      },
+      "specialization": "Cardio Fitness"
+    }
+  ],
+  "trainings": [
+    {
+      "trainee": {
+        "user": {
+          "firstName": "Liam",
+          "lastName": "Anderson"
+        },
+        "dateOfBirth": "1996-06-15",
+        "address": "789 Oak St"
+      },
+      "trainer": {
+        "user": {
+          "firstName": "Sophia",
+          "lastName": "Taylor"
+        },
+        "specialization": "Cardio Fitness"
+      },
+      "trainingName": "Deep Stretch Yoga",
+      "trainingType": {
+        "trainingTypeName": "Yoga & Flexibility"
+      },
+      "trainingDate": "2025-04-05",
+      "trainingDurationMinutes": 60
+    },
+    {
+      "trainee": {
+        "user": {
+          "firstName": "Ethan",
+          "lastName": "Williams"
+        },
+        "dateOfBirth": "1998-09-23",
+        "address": "321 Maple Ave"
+      },
+      "trainer": {
+        "user": {
+          "firstName": "Oliver",
+          "lastName": "Martinez"
+        },
+        "specialization": "Yoga & Flexibility"
+      },
+      "trainingName": "Endurance Boost",
+      "trainingType": {
+        "trainingTypeName": "Cardio Training"
+      },
+      "trainingDate": "2025-04-12",
+      "trainingDurationMinutes": 50
+    }
+  ]
+}
