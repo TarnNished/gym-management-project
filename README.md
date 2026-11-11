@@ -14,7 +14,7 @@ mvn spring-boot:run
 
 | What | URL |
 |---|---|
-| Swagger UI (try every endpoint) | http://localhost:8080/swagger-ui.html |
+| Swagger UI (try every endpoint; log in, then paste the token into **Authorize**) | http://localhost:8080/swagger-ui.html |
 | Photo upload demo page (HTML form) | http://localhost:8080/upload.html |
 | H2 console (JDBC URL `jdbc:h2:mem:gym`, user `sa`, no password) | http://localhost:8080/h2-console |
 
