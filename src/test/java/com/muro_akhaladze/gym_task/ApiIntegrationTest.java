@@ -125,7 +125,7 @@ class ApiIntegrationTest {
         String token = login("Ethan.Williams", "password123");
         mvc.perform(get("/api/v1/trainers")
                         .param("page", "0").param("size", "3")
-                        .param("sortBy", "lastName").param("direction", "asc")
+                        .param("sort", "lastName,asc")
                         .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(3))
@@ -140,7 +140,7 @@ class ApiIntegrationTest {
         String token = login("Ethan.Williams", "password123");
         mvc.perform(get("/api/v1/trainers")
                         .param("specialization", "strength training")
-                        .param("sortBy", "firstName")
+                        .param("sort", "firstName")
                         .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page.totalElements").value(3))
@@ -150,7 +150,7 @@ class ApiIntegrationTest {
     @Test
     void invalidSortFieldReturns400() throws Exception {
         String token = login("Ethan.Williams", "password123");
-        mvc.perform(get("/api/v1/trainers").param("sortBy", "password").header("Authorization", token))
+        mvc.perform(get("/api/v1/trainers").param("sort", "user.password").header("Authorization", token))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("INVALID_SORT"));
     }

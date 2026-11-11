@@ -57,7 +57,7 @@ The `dev` profile reads `DB_URL` (default `jdbc:postgresql://localhost:5432/gym`
 ```
 src/main/java/com/muro_akhaladze/gym_task
 ├── controller/     @RestController  – HTTP layer only (Trainee, Trainer, Training, TrainingType, User, Auth)
-├── service/        @Service         – business logic, @Transactional
+├── service/        @Service         – business logic (incl. login in AuthService), @Transactional
 ├── repository/     @Repository      – Spring Data JpaRepository interfaces
 ├── entity/         @Entity          – JPA model
 ├── dto/                             – request (validated) / response objects
@@ -78,7 +78,7 @@ All endpoints are under `/api/v1`. **Public** means no token is needed; everythi
 | POST | `/trainees`, `/trainers` | **Public.** Register; returns the generated username and password |
 | POST | `/auth/login` | **Public.** Returns a JWT |
 | PUT | `/auth/change-password` | |
-| GET | `/trainers?specialization=&page=0&size=10&sortBy=lastName&direction=asc` | **Pagination and sorting** |
+| GET | `/trainers?specialization=&page=0&size=10&sort=lastName,asc` | **Pagination and sorting** (`Pageable`). Sort keys: `firstName`, `lastName`, `username`, `specialization` |
 | GET | `/trainees/{username}/trainings?fromDate=&toDate=&trainerName=&trainingTypeName=&page=0&size=10&sort=trainingDate,desc` | Filters + `Pageable`. Sort keys: `trainingDate`, `trainingName`, `trainingDuration`, `trainingType` |
 | GET | `/trainers/{username}/trainings?...` | Same, for a trainer |
 | GET / PUT / DELETE | `/trainees/{username}` | Profile; delete cascades to trainings, links and photo |
@@ -105,7 +105,7 @@ TOKEN=$(curl -s -H "Content-Type: application/json" \
 
 # page 2 of trainers, 3 per page, sorted by last name descending
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/trainers?page=1&size=3&sortBy=lastName&direction=desc"
+  "http://localhost:8080/api/v1/trainers?page=1&size=3&sort=lastName,desc"
 
 # upload a profile photo
 curl -H "Authorization: Bearer $TOKEN" -F "file=@photo.png" \
@@ -132,8 +132,8 @@ curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json
 | `@Transactional` on data changes | Every create/update/delete in `TraineeService`, `TrainerService`, `TrainingService`, `TrainingTypeService`, `UserService` (reads use `readOnly = true`) |
 | `@GetMapping` / `@PostMapping` / `@PutMapping` / `@DeleteMapping` | `TraineeController`, `TrainerController`, `UserController` |
 | `@PathVariable` | `/{username}` on every profile endpoint |
-| `@RequestParam` | `TrainerController.listTrainers` (`specialization`, `page`, `size`, `sortBy`, `direction`); `UserController.uploadPhoto` (`file`) |
+| `@RequestParam` | `TrainerController.listTrainers` (`specialization` filter); `UserController.uploadPhoto` (`file`) |
 | `@RequestBody` / `@ModelAttribute` | JSON bodies everywhere; `@ModelAttribute` for the trainings filter objects |
 | JSR-303 validation + `@Valid` | `dto/**/*Request` (`@NotBlank`, `@NotNull`, `@Size`, `@Past`, `@Positive`, `@Max`, `@AssertTrue`); every `@RequestBody` and `@ModelAttribute` is `@Valid` |
 | File upload (`MultipartFile`, `multipart/form-data`) | `UserController.uploadPhoto` → `FileStorageService` saves to `uploads/`, file name stored in `users.photo_path`; HTML form in `static/upload.html` |
-| Pagination and sorting (`Pageable`, `Sort`) | `TrainerService.listTrainers` builds `PageRequest.of(page, size, Sort.by(...))`; trainings endpoints take a `Pageable` (`@PageableDefault`). Sort keys are checked against an allowed list in both places (unknown keys return 400) |
+| Pagination and sorting (`Pageable`, `Sort`) | All three list endpoints take a `Pageable` (`@PageableDefault`); the services rebuild it with `PageRequest.of(page, size, Sort)` after mapping sort keys to entity paths. Sort keys are checked against an allowed list in both places (unknown keys return 400) |

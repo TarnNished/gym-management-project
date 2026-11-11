@@ -15,6 +15,7 @@ import com.muro_akhaladze.gym_task.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -50,14 +51,12 @@ public class TrainerController {
 
     @GetMapping
     @Operation(summary = "List active trainers with server-side pagination and sorting",
-            description = "sortBy: firstName | lastName | username | specialization; direction: asc | desc")
+            description = "Filter: specialization. Paging: page, size, sort=field,asc or sort=field,desc "
+                    + "(fields: firstName, lastName, username, specialization)")
     public ResponseEntity<Page<TrainerShortInfo>> listTrainers(
             @RequestParam(required = false) String specialization,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "lastName") String sortBy,
-            @RequestParam(defaultValue = "asc") String direction) {
-        return ResponseEntity.ok(trainerService.listTrainers(specialization, page, size, sortBy, direction));
+            @ParameterObject @PageableDefault(size = 10, sort = "lastName", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(trainerService.listTrainers(specialization, pageable));
     }
 
     @GetMapping("/{username}")
@@ -100,8 +99,8 @@ public class TrainerController {
             description = "Filters: fromDate, toDate (yyyy-MM-dd), traineeName. Paging: page, size, sort=trainingDate,desc")
     public ResponseEntity<Page<TrainingResponse>> getTrainerTrainings(
             @PathVariable String username,
-            @Valid @ModelAttribute TrainerTrainingsFilterRequest filter,
-            @PageableDefault(size = 10, sort = "trainingDate", direction = Sort.Direction.DESC) Pageable pageable,
+            @Valid @ParameterObject @ModelAttribute TrainerTrainingsFilterRequest filter,
+            @ParameterObject @PageableDefault(size = 10, sort = "trainingDate", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
         accessGuard.requireSelf(authentication, username);
         return ResponseEntity.ok(trainingService.getTrainerTrainings(username, filter, pageable));

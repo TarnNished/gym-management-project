@@ -23,6 +23,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -98,22 +100,23 @@ public class TrainerService {
 
     /**
      * Server-side pagination + sorting of active trainers, optionally filtered by specialization.
-     *
-     * @param sortBy    one of firstName, lastName, username, specialization
-     * @param direction asc or desc
+     * The client's {@link Pageable} (page, size, sort=field,dir) is checked: sort keys must be one of
+     * firstName, lastName, username, specialization (mapped to entity paths); anything else -> 400.
      */
     @Transactional(readOnly = true)
-    public Page<TrainerShortInfo> listTrainers(String specialization, int page, int size, String sortBy, String direction) {
-        String property = SORT_FIELDS.get(sortBy);
-        if (property == null) {
-            throw new ApiException("INVALID_SORT",
-                    "sortBy must be one of " + SORT_FIELDS.keySet(), HttpStatus.BAD_REQUEST);
+    public Page<TrainerShortInfo> listTrainers(String specialization, Pageable requested) {
+        List<Sort.Order> orders = new ArrayList<>();
+        for (Sort.Order order : requested.getSort()) {
+            String property = SORT_FIELDS.get(order.getProperty());
+            if (property == null) {
+                throw new ApiException("INVALID_SORT",
+                        "sort must be one of " + SORT_FIELDS.keySet(), HttpStatus.BAD_REQUEST);
+            }
+            orders.add(new Sort.Order(order.getDirection(), property));
         }
-        Sort.Direction dir = Sort.Direction.fromOptionalString(direction)
-                .orElseThrow(() -> new ApiException("INVALID_SORT", "direction must be asc or desc", HttpStatus.BAD_REQUEST));
-
-        Sort sort = Sort.by(dir, property).and(Sort.by("id"));
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE), sort);
+        Sort sort = (orders.isEmpty() ? Sort.by("user.lastName") : Sort.by(orders)).and(Sort.by("id"));
+        Pageable pageable = PageRequest.of(requested.getPageNumber(),
+                Math.min(requested.getPageSize(), MAX_PAGE_SIZE), sort);
 
         Page<Trainer> trainers = (specialization == null || specialization.isBlank())
                 ? trainerRepo.findByUserIsActiveTrue(pageable)

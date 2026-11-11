@@ -16,6 +16,7 @@ import com.muro_akhaladze.gym_task.dto.user.ActivateUserRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -101,8 +102,8 @@ public class TraineeController {
                     + "Paging: page, size, sort=trainingDate,desc")
     public ResponseEntity<Page<TrainingResponse>> getTraineeTrainings(
             @PathVariable String username,
-            @Valid @ModelAttribute TraineeTrainingsFilterRequest filter,
-            @PageableDefault(size = 10, sort = "trainingDate", direction = Sort.Direction.DESC) Pageable pageable,
+            @Valid @ParameterObject @ModelAttribute TraineeTrainingsFilterRequest filter,
+            @ParameterObject @PageableDefault(size = 10, sort = "trainingDate", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
         accessGuard.requireSelf(authentication, username);
         return ResponseEntity.ok(trainingService.getTraineeTrainings(username, filter, pageable));
