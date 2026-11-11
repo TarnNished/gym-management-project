@@ -1,4 +1,4 @@
-package com.muro_akhaladze.gym_task.heathIndicators;
+package com.muro_akhaladze.gym_task.monitoring;
 
 import com.muro_akhaladze.gym_task.repository.TrainingRepo;
 import lombok.RequiredArgsConstructor;

@@ -1,4 +1,4 @@
-package com.muro_akhaladze.gym_task.heathIndicators;
+package com.muro_akhaladze.gym_task.monitoring;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;

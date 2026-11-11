@@ -1,180 +1,118 @@
 package com.muro_akhaladze.gym_task.controller;
 
-import com.muro_akhaladze.gym_task.dto.trainee.ActivateUserRequest;
+import com.muro_akhaladze.gym_task.dto.auth.RegistrationResponse;
 import com.muro_akhaladze.gym_task.dto.trainee.TraineeProfileResponse;
-import com.muro_akhaladze.gym_task.dto.trainer.TraineeRegistrationRequest;
+import com.muro_akhaladze.gym_task.dto.trainee.TraineeRegistrationRequest;
+import com.muro_akhaladze.gym_task.dto.trainee.TraineeUpdateRequest;
+import com.muro_akhaladze.gym_task.dto.trainee.UpdateTrainersRequest;
 import com.muro_akhaladze.gym_task.dto.trainer.TrainerShortInfo;
 import com.muro_akhaladze.gym_task.dto.training.TraineeTrainingsFilterRequest;
-import com.muro_akhaladze.gym_task.entity.Trainee;
-import com.muro_akhaladze.gym_task.entity.Training;
-import com.muro_akhaladze.gym_task.entity.User;
+import com.muro_akhaladze.gym_task.dto.training.TrainingResponse;
+import com.muro_akhaladze.gym_task.security.AccessGuard;
 import com.muro_akhaladze.gym_task.service.TraineeService;
-import com.muro_akhaladze.gym_task.service.TrainerService;
 import com.muro_akhaladze.gym_task.service.TrainingService;
 import com.muro_akhaladze.gym_task.service.UserService;
+import com.muro_akhaladze.gym_task.dto.user.ActivateUserRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/trainees")
-@RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Trainee Operations", description = "API endpoints for handling trainee-related actions")
 public class TraineeController {
     private final TraineeService traineeService;
-    private final TrainerService trainerService;
     private final UserService userService;
     private final TrainingService trainingService;
+    private final AccessGuard accessGuard;
 
-    @PostMapping()
-    @Operation(summary = "Creating trainee")
-    public ResponseEntity<?> registerTrainee(@RequestBody TraineeRegistrationRequest request){
-        Trainee trainee = new Trainee();
-        User user = new User();
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        trainee.setUser(user);
-        trainee.setDateOfBirth(request.getDateOfBirth());
-        trainee.setAddress(request.getAddress());
+    // Constructor injection
+    public TraineeController(TraineeService traineeService, UserService userService, TrainingService trainingService,
+                             AccessGuard accessGuard) {
+        this.traineeService = traineeService;
+        this.userService = userService;
+        this.trainingService = trainingService;
+        this.accessGuard = accessGuard;
+    }
 
-        return ResponseEntity.status(200).body(traineeService.createTrainee(trainee));
+    @PostMapping
+    @Operation(summary = "Register a new trainee (public). Returns the generated username and password.")
+    public ResponseEntity<RegistrationResponse> registerTrainee(@Valid @RequestBody TraineeRegistrationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(traineeService.register(request));
     }
 
     @GetMapping("/{username}")
-    @Operation(summary = "Profile getter")
-    public ResponseEntity<TraineeProfileResponse> getTraineeProfile(
-            @PathVariable("username") String username,
-            Authentication authentication) {
-
-        String authUsername = authentication.getName();
-
-        if (!authUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        Optional<TraineeProfileResponse> trainee = traineeService.getTraineeProfile(username);
-        return trainee.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    @Operation(summary = "Get trainee profile (incl. assigned trainers)")
+    public ResponseEntity<TraineeProfileResponse> getTraineeProfile(@PathVariable String username,
+                                                                    Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
+        return ResponseEntity.ok(traineeService.getProfile(username));
     }
 
     @PutMapping("/{username}")
     @Operation(summary = "Update trainee profile")
-    public ResponseEntity<TraineeProfileResponse> updateTraineeProfile(
-            @PathVariable("username") String username,
-            @Valid @RequestBody TraineeProfileResponse request,
-            Authentication authentication) {
-
-        String authUsername = authentication.getName();
-        log.info("Trainee update requested for {}", username);
-
-        if (!authUsername.equals(username) || !username.equals(request.getUsername())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        User user = new User();
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setActive(request.getIsActive());
-
-        Trainee trainee = new Trainee();
-        trainee.setUser(user);
-        trainee.setDateOfBirth(request.getDateOfBirth());
-        trainee.setAddress(request.getAddress());
-
-        Trainee updated = traineeService.updateTrainee(trainee);
-        TraineeProfileResponse response = traineeService.getTraineeProfile(updated.getUser().getUsername()).orElseThrow();
-
-        log.info("Trainee {} successfully updated", username);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<TraineeProfileResponse> updateTraineeProfile(@PathVariable String username,
+                                                                       @Valid @RequestBody TraineeUpdateRequest request,
+                                                                       Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
+        return ResponseEntity.ok(traineeService.update(username, request));
     }
 
     @DeleteMapping("/{username}")
-    @Operation(summary = "Delete trainee profile and cascade trainings")
-    public ResponseEntity<Void> deleteTrainee(
-            @PathVariable("username") String username,
-            Authentication authentication) {
-
-        String authUsername = authentication.getName();
-
-        if (!authUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        traineeService.deleteTrainee(username);
-        return ResponseEntity.ok().build();
+    @Operation(summary = "Delete trainee profile (also deletes trainings, trainer links and photo)")
+    public ResponseEntity<Void> deleteTrainee(@PathVariable String username, Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
+        traineeService.delete(username);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{username}")
     @Operation(summary = "Activate or deactivate trainee")
-    public ResponseEntity<Void> toggleActivationTrainee(
-            @PathVariable("username") String username,
-            @RequestBody @Valid ActivateUserRequest request,
-            Authentication authentication) {
-
-        String authUsername = authentication.getName();
-
-        if (!authUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
+    public ResponseEntity<Void> toggleActivationTrainee(@PathVariable String username,
+                                                        @Valid @RequestBody ActivateUserRequest request,
+                                                        Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
         userService.updateUserActivationStatus(username, request.getIsActive());
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/{username}/trainers")
+    @Operation(summary = "Replace the trainee's assigned trainers (many-to-many)")
+    public ResponseEntity<List<TrainerShortInfo>> updateTrainers(@PathVariable String username,
+                                                                 @Valid @RequestBody UpdateTrainersRequest request,
+                                                                 Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
+        return ResponseEntity.ok(traineeService.updateTrainers(username, request.getTrainerUsernames()));
+    }
+
     @GetMapping("/{username}/trainings")
-    @Operation(summary = "Get trainee trainings with filters")
-    public ResponseEntity<List<Training>> getTraineeTrainings(
-            @PathVariable("username") String username,
-            @Valid @ModelAttribute TraineeTrainingsFilterRequest request,
+    @Operation(summary = "Trainee trainings with filters, pagination and sorting",
+            description = "Filters: fromDate, toDate (yyyy-MM-dd), trainerName, trainingTypeName. "
+                    + "Paging: page, size, sort=trainingDate,desc")
+    public ResponseEntity<Page<TrainingResponse>> getTraineeTrainings(
+            @PathVariable String username,
+            @Valid @ModelAttribute TraineeTrainingsFilterRequest filter,
+            @PageableDefault(size = 10, sort = "trainingDate", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
-
-        String authUsername = authentication.getName();
-
-        if (!authUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        List<Training> trainings = trainingService.getTraineeTrainings(
-                username,
-                request.getFromDate(),
-                request.getToDate(),
-                request.getTrainerName(),
-                request.getTrainingTypeName());
-        return ResponseEntity.ok(trainings);
+        accessGuard.requireSelf(authentication, username);
+        return ResponseEntity.ok(trainingService.getTraineeTrainings(username, filter, pageable));
     }
 
     @GetMapping("/{username}/unassigned-trainers")
-    @Operation(summary = "Get non-assigned active trainers for a trainee")
-    public ResponseEntity<List<TrainerShortInfo>> getNotAssignedTrainers(
-            @PathVariable("username") String username,
-            Authentication authentication) {
-
-        String authUsername = authentication.getName();
-
-        if (!authUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        List<TrainerShortInfo> trainers = trainerService.getNotAssigned(username)
-                .stream()
-                .map(trainer -> {
-                    TrainerShortInfo info = new TrainerShortInfo();
-                    info.setUsername(trainer.getUser().getUsername());
-                    info.setFirstName(trainer.getUser().getFirstName());
-                    info.setLastName(trainer.getUser().getLastName());
-                    info.setSpecialization(trainer.getSpecialization().toString());
-                    return info;
-                })
-                .toList();
-
-        return ResponseEntity.ok(trainers);
+    @Operation(summary = "Active trainers not yet assigned to the trainee")
+    public ResponseEntity<List<TrainerShortInfo>> getNotAssignedTrainers(@PathVariable String username,
+                                                                         Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
+        return ResponseEntity.ok(traineeService.getUnassignedTrainers(username));
     }
 }

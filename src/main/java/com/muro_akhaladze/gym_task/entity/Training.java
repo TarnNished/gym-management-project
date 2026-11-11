@@ -1,14 +1,10 @@
 package com.muro_akhaladze.gym_task.entity;
 
-
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 
@@ -16,7 +12,6 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Training {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -50,6 +45,4 @@ public class Training {
     @NotNull(message = "Training duration is required")
     @Min(value = 1, message = "Training duration must be at least 1")
     private Long trainingDuration;
-
-
 }

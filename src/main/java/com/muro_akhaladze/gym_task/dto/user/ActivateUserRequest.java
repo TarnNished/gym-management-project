@@ -1,4 +1,4 @@
-package com.muro_akhaladze.gym_task.dto.trainee;
+package com.muro_akhaladze.gym_task.dto.user;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

@@ -1,133 +1,109 @@
 package com.muro_akhaladze.gym_task.controller;
 
-import com.muro_akhaladze.gym_task.dto.trainee.ActivateUserRequest;
+import com.muro_akhaladze.gym_task.dto.auth.RegistrationResponse;
+import com.muro_akhaladze.gym_task.dto.user.ActivateUserRequest;
 import com.muro_akhaladze.gym_task.dto.trainer.TrainerProfileResponse;
-import com.muro_akhaladze.gym_task.dto.trainee.TrainerRegistrationRequest;
+import com.muro_akhaladze.gym_task.dto.trainer.TrainerRegistrationRequest;
+import com.muro_akhaladze.gym_task.dto.trainer.TrainerShortInfo;
+import com.muro_akhaladze.gym_task.dto.trainer.TrainerUpdateRequest;
 import com.muro_akhaladze.gym_task.dto.training.TrainerTrainingsFilterRequest;
-import com.muro_akhaladze.gym_task.entity.Trainer;
-import com.muro_akhaladze.gym_task.entity.Training;
-import com.muro_akhaladze.gym_task.entity.User;
+import com.muro_akhaladze.gym_task.dto.training.TrainingResponse;
+import com.muro_akhaladze.gym_task.security.AccessGuard;
 import com.muro_akhaladze.gym_task.service.TrainerService;
 import com.muro_akhaladze.gym_task.service.TrainingService;
 import com.muro_akhaladze.gym_task.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
-
 @RestController
 @RequestMapping("/api/v1/trainers")
-@RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Trainer Operations", description = "API endpoints for handling trainer-related actions")
 public class TrainerController {
     private final TrainerService trainerService;
     private final UserService userService;
     private final TrainingService trainingService;
+    private final AccessGuard accessGuard;
 
-    @PostMapping()
-    @Operation(summary = "Register a new trainer")
-    public ResponseEntity<?> registerTrainer(@RequestBody TrainerRegistrationRequest request){
-        Trainer trainer = new Trainer();
-        User user = new User();
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        trainer.setUser(user);
-        trainer.setSpecialization(request.getSpecialization());
+    // Constructor injection
+    public TrainerController(TrainerService trainerService, UserService userService, TrainingService trainingService,
+                             AccessGuard accessGuard) {
+        this.trainerService = trainerService;
+        this.userService = userService;
+        this.trainingService = trainingService;
+        this.accessGuard = accessGuard;
+    }
 
-        return ResponseEntity.status(200).body(trainerService.createTrainer(trainer));
+    @PostMapping
+    @Operation(summary = "Register a new trainer (public). Returns the generated username and password.")
+    public ResponseEntity<RegistrationResponse> registerTrainer(@Valid @RequestBody TrainerRegistrationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(trainerService.register(request));
+    }
+
+    @GetMapping
+    @Operation(summary = "List active trainers with server-side pagination and sorting",
+            description = "sortBy: firstName | lastName | username | specialization; direction: asc | desc")
+    public ResponseEntity<Page<TrainerShortInfo>> listTrainers(
+            @RequestParam(required = false) String specialization,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "lastName") String sortBy,
+            @RequestParam(defaultValue = "asc") String direction) {
+        return ResponseEntity.ok(trainerService.listTrainers(specialization, page, size, sortBy, direction));
     }
 
     @GetMapping("/{username}")
-    @Operation(summary = "Trainer Profile getter")
-    public ResponseEntity<TrainerProfileResponse> getTrainerProfile(
-            @PathVariable("username") String username,
-            Authentication authentication) {
-
-        String authUsername = authentication.getName();
-
-        if (!authUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        Optional<TrainerProfileResponse> trainer = trainerService.getTrainerProfile(username);
-        return trainer.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    @Operation(summary = "Get trainer profile (incl. assigned trainees)")
+    public ResponseEntity<TrainerProfileResponse> getTrainerProfile(@PathVariable String username,
+                                                                    Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
+        return ResponseEntity.ok(trainerService.getProfile(username));
     }
 
     @PutMapping("/{username}")
     @Operation(summary = "Update trainer profile")
-    public ResponseEntity<TrainerProfileResponse> updateTrainerProfile(
-            @PathVariable("username") String username,
-            @Valid @RequestBody TrainerProfileResponse request,
-            Authentication authentication) {
+    public ResponseEntity<TrainerProfileResponse> updateTrainerProfile(@PathVariable String username,
+                                                                       @Valid @RequestBody TrainerUpdateRequest request,
+                                                                       Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
+        return ResponseEntity.ok(trainerService.update(username, request));
+    }
 
-        log.info("Trainer update requested for {}", username);
-        String authUsername = authentication.getName();
-
-        if (!authUsername.equals(username) || !username.equals(request.getUsername())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        User user = new User();
-        user.setUserName(request.getUsername());
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setActive(request.getIsActive());
-
-        Trainer trainer = new Trainer();
-        trainer.setUser(user);
-        trainer.setSpecialization(request.getSpecialization());
-
-        Trainer updated = trainerService.updateTrainer(trainer);
-        TrainerProfileResponse response = trainerService.getTrainerProfile(updated.getUser().getUsername()).orElseThrow();
-
-        log.info("Trainer {} successfully updated", username);
-        return ResponseEntity.ok(response);
+    @DeleteMapping("/{username}")
+    @Operation(summary = "Delete trainer profile (also deletes its trainings, trainee links and photo)")
+    public ResponseEntity<Void> deleteTrainer(@PathVariable String username, Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
+        trainerService.delete(username);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{username}")
     @Operation(summary = "Activate or deactivate trainer")
-    public ResponseEntity<Void> toggleActivationTrainer(
-            @PathVariable("username") String username,
-            @RequestBody @Valid ActivateUserRequest request,
-            Authentication authentication) {
-
-        String authUsername = authentication.getName();
-
-        if (!authUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
+    public ResponseEntity<Void> toggleActivationTrainer(@PathVariable String username,
+                                                        @Valid @RequestBody ActivateUserRequest request,
+                                                        Authentication authentication) {
+        accessGuard.requireSelf(authentication, username);
         userService.updateUserActivationStatus(username, request.getIsActive());
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{username}/trainings")
-    @Operation(summary = "Get trainer trainings with filters")
-    public ResponseEntity<List<Training>> getTrainerTrainings(
-            @PathVariable("username") String username,
-            @Valid TrainerTrainingsFilterRequest request,
+    @Operation(summary = "Trainer trainings with filters, pagination and sorting",
+            description = "Filters: fromDate, toDate (yyyy-MM-dd), traineeName. Paging: page, size, sort=trainingDate,desc")
+    public ResponseEntity<Page<TrainingResponse>> getTrainerTrainings(
+            @PathVariable String username,
+            @Valid @ModelAttribute TrainerTrainingsFilterRequest filter,
+            @PageableDefault(size = 10, sort = "trainingDate", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
-
-        String authUsername = authentication.getName();
-
-        if (!authUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        List<Training> trainings = trainingService.getTrainerTrainings(
-                username,
-                request.getFromDate(),
-                request.getToDate(),
-                request.getTraineeName());
-
-        return ResponseEntity.ok(trainings);
+        accessGuard.requireSelf(authentication, username);
+        return ResponseEntity.ok(trainingService.getTrainerTrainings(username, filter, pageable));
     }
 }

@@ -3,86 +3,79 @@ package com.muro_akhaladze.gym_task.controller;
 import com.muro_akhaladze.gym_task.dto.auth.ChangePasswordRequest;
 import com.muro_akhaladze.gym_task.dto.auth.LoginRequest;
 import com.muro_akhaladze.gym_task.dto.auth.LoginResponse;
-import com.muro_akhaladze.gym_task.security.CustomUserDetailsService;
+import com.muro_akhaladze.gym_task.exceptions.ApiException;
+import com.muro_akhaladze.gym_task.monitoring.CustomMetrics;
+import com.muro_akhaladze.gym_task.security.AccessGuard;
 import com.muro_akhaladze.gym_task.security.JwtService;
 import com.muro_akhaladze.gym_task.security.LoginAttemptService;
 import com.muro_akhaladze.gym_task.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
-import org.springframework.security.authentication.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@RequiredArgsConstructor
+@RequiredArgsConstructor // generates the constructor used for constructor injection
 @Slf4j
 @Tag(name = "Authentication", description = "User login and password management")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
-    private final CustomUserDetailsService userDetailsService;
     private final JwtService jwtService;
     private final UserService userService;
     private final LoginAttemptService loginAttemptService;
+    private final AccessGuard accessGuard;
+    private final CustomMetrics metrics;
 
     @PostMapping("/login")
-    @Operation(summary = "Login request", description = "Authenticates the user and returns a JWT token")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    @Operation(summary = "Login", description = "Authenticates the user and returns a JWT token (use it as 'Authorization: Bearer <token>')")
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         String username = request.getUsername();
+        String clientIp = http.getRemoteAddr();
 
-        if (loginAttemptService.isBlocked(username)) {
-            log.warn("User '{}' is temporarily blocked due to failed login attempts", username);
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(new LoginResponse("User is temporarily blocked. Try again later."));
+        if (loginAttemptService.isBlocked(username, clientIp)) {
+            log.warn("User '{}' is temporarily blocked for {} after failed logins", username, clientIp);
+            throw new ApiException("TOO_MANY_ATTEMPTS", "Too many failed logins. Try again in 5 minutes.",
+                    HttpStatus.TOO_MANY_REQUESTS);
         }
 
+        Authentication auth;
         try {
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, request.getPassword())
-            );
-        } catch (BadCredentialsException ex) {
-            loginAttemptService.loginFailed(username);
+            auth = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(username, request.getPassword()));
+        } catch (DisabledException ex) {
+            throw new ApiException("ACCOUNT_DISABLED", "Account is deactivated", HttpStatus.FORBIDDEN);
+        } catch (AuthenticationException ex) {
+            loginAttemptService.loginFailed(username, clientIp);
             log.warn("Login failed for user: {}", username);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new LoginResponse("Invalid username or password"));
+            throw new ApiException("INVALID_CREDENTIALS", "Invalid username or password", HttpStatus.UNAUTHORIZED);
         }
 
-        loginAttemptService.loginSucceeded(username);
-
-        UserDetails user = userDetailsService.loadUserByUsername(username);
-        String jwt = jwtService.generateToken(user);
-
+        loginAttemptService.loginSucceeded(username, clientIp);
+        metrics.countLoginSuccess();
+        String jwt = jwtService.generateToken((UserDetails) auth.getPrincipal());
         log.info("Login successful for user: {}", username);
-        return ResponseEntity.ok(new LoginResponse(jwt));
+        return ResponseEntity.ok(new LoginResponse(jwt, "Login successful"));
     }
 
     @PutMapping("/change-password")
-    @Operation(
-            summary = "Change password",
-            description = "Allows user to change password"
-    )
-    public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        log.info("Password change requested for user: {}", request.getUsername());
-
-        try {
-            userService.updatePassword(
-                    request.getUsername(),
-                    request.getOldPassword(),
-                    request.getNewPassword()
-            );
-            log.info("Password changed successfully for user: {}", request.getUsername());
-            return ResponseEntity.ok("Password changed successfully");
-
-        } catch (IllegalArgumentException ex) {
-            log.warn("Password change failed for user: {} - Reason: {}", request.getUsername(), ex.getMessage());
-            return ResponseEntity.badRequest().body(ex.getMessage());
-        }
+    @Operation(summary = "Change password", description = "Requires a JWT; you can only change your own password")
+    public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                                 Authentication authentication) {
+        accessGuard.requireSelf(authentication, request.getUsername());
+        userService.updatePassword(request.getUsername(), request.getOldPassword(), request.getNewPassword());
+        return ResponseEntity.ok("Password changed successfully");
     }
-
-
 }

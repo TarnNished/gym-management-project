@@ -1,101 +1,39 @@
 {
+  "demoPassword": "password123",
   "trainingTypes": [
-    {
-      "trainingTypeName": "Yoga & Flexibility"
-    },
-    {
-      "trainingTypeName": "Cardio Training"
-    },
-    {
-      "trainingTypeName": "Strength Training"
-    },
-    {
-      "trainingTypeName": "High-Intensity Interval Training (HIIT)"
-    },
-    {
-      "trainingTypeName": "Endurance Training"
-    }
+    "Yoga & Flexibility",
+    "Cardio Training",
+    "Strength Training",
+    "HIIT",
+    "Endurance Training"
   ],
   "trainees": [
-    {
-      "user": {
-        "firstName": "Liam",
-        "lastName": "Anderson"
-      },
-      "dateOfBirth": "1996-06-15",
-      "address": "789 Oak St"
-    },
-    {
-      "user": {
-        "firstName": "Ethan",
-        "lastName": "Williams"
-      },
-      "dateOfBirth": "1998-09-23",
-      "address": "321 Maple Ave"
-    }
+    { "firstName": "Liam",   "lastName": "Anderson", "dateOfBirth": "1996-06-15", "address": "789 Oak St" },
+    { "firstName": "Ethan",  "lastName": "Williams", "dateOfBirth": "1998-09-23", "address": "321 Maple Ave" },
+    { "firstName": "Mia",    "lastName": "Johnson",  "dateOfBirth": "2000-01-11", "address": "12 Pine Rd" },
+    { "firstName": "Noah",   "lastName": "Brown",    "dateOfBirth": "1993-03-30", "address": "45 Birch Blvd" }
   ],
   "trainers": [
-    {
-      "user": {
-        "firstName": "Oliver",
-        "lastName": "Martinez"
-      },
-      "specialization": "Yoga & Flexibility"
-    },
-    {
-      "user": {
-        "firstName": "Sophia",
-        "lastName": "Taylor"
-      },
-      "specialization": "Cardio Fitness"
-    }
+    { "firstName": "Oliver",   "lastName": "Martinez", "specialization": "Yoga & Flexibility" },
+    { "firstName": "Sophia",   "lastName": "Taylor",   "specialization": "Cardio Training" },
+    { "firstName": "James",    "lastName": "Wilson",   "specialization": "Strength Training" },
+    { "firstName": "Emma",     "lastName": "Davis",    "specialization": "HIIT" },
+    { "firstName": "Lucas",    "lastName": "Garcia",   "specialization": "Endurance Training" },
+    { "firstName": "Ava",      "lastName": "Miller",   "specialization": "Yoga & Flexibility" },
+    { "firstName": "Henry",    "lastName": "Moore",    "specialization": "Strength Training" },
+    { "firstName": "Isabella", "lastName": "Clark",    "specialization": "Cardio Training" },
+    { "firstName": "Jack",     "lastName": "Lewis",    "specialization": "HIIT" },
+    { "firstName": "Grace",    "lastName": "Walker",   "specialization": "Strength Training" },
+    { "firstName": "Leo",      "lastName": "Hall",     "specialization": "Cardio Training" },
+    { "firstName": "Chloe",    "lastName": "Young",    "specialization": "Yoga & Flexibility" }
   ],
   "trainings": [
-    {
-      "trainee": {
-        "user": {
-          "firstName": "Liam",
-          "lastName": "Anderson"
-        },
-        "dateOfBirth": "1996-06-15",
-        "address": "789 Oak St"
-      },
-      "trainer": {
-        "user": {
-          "firstName": "Sophia",
-          "lastName": "Taylor"
-        },
-        "specialization": "Cardio Fitness"
-      },
-      "trainingName": "Deep Stretch Yoga",
-      "trainingType": {
-        "trainingTypeName": "Yoga & Flexibility"
-      },
-      "trainingDate": "2025-04-05",
-      "trainingDurationMinutes": 60
-    },
-    {
-      "trainee": {
-        "user": {
-          "firstName": "Ethan",
-          "lastName": "Williams"
-        },
-        "dateOfBirth": "1998-09-23",
-        "address": "321 Maple Ave"
-      },
-      "trainer": {
-        "user": {
-          "firstName": "Oliver",
-          "lastName": "Martinez"
-        },
-        "specialization": "Yoga & Flexibility"
-      },
-      "trainingName": "Endurance Boost",
-      "trainingType": {
-        "trainingTypeName": "Cardio Training"
-      },
-      "trainingDate": "2025-04-12",
-      "trainingDurationMinutes": 50
-    }
+    { "trainee": "Liam.Anderson",  "trainer": "Oliver.Martinez", "trainingName": "Deep Stretch Yoga", "trainingDate": "2025-03-10", "trainingDuration": 60 },
+    { "trainee": "Liam.Anderson",  "trainer": "Sophia.Taylor",   "trainingName": "Morning Run",       "trainingDate": "2025-03-12", "trainingDuration": 45 },
+    { "trainee": "Liam.Anderson",  "trainer": "James.Wilson",    "trainingName": "Full Body Power",   "trainingDate": "2025-03-15", "trainingDuration": 75 },
+    { "trainee": "Ethan.Williams", "trainer": "Sophia.Taylor",   "trainingName": "Interval Cardio",   "trainingDate": "2025-03-11", "trainingDuration": 40 },
+    { "trainee": "Ethan.Williams", "trainer": "Emma.Davis",      "trainingName": "Tabata Blast",      "trainingDate": "2025-03-18", "trainingDuration": 30 },
+    { "trainee": "Mia.Johnson",    "trainer": "Ava.Miller",      "trainingName": "Vinyasa Flow",      "trainingDate": "2025-03-20", "trainingDuration": 60 },
+    { "trainee": "Noah.Brown",     "trainer": "Lucas.Garcia",    "trainingName": "Long Ride",         "trainingDate": "2025-03-22", "trainingDuration": 90 }
   ]
 }

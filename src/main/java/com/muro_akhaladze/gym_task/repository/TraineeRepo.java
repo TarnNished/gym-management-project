@@ -2,27 +2,25 @@ package com.muro_akhaladze.gym_task.repository;
 
 import com.muro_akhaladze.gym_task.entity.Trainee;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface TraineeRepo extends JpaRepository<Trainee, Integer> {
 
-    @Query("select t from Trainee t where  t.user.userName = :username")
-    Optional<Trainee> findByUsername(@Param("username")String username);
+    // Method-name query (navigates Trainee.user.userName)
+    Optional<Trainee> findByUserUserName(String userName);
 
-    @Modifying
-    @Query("DELETE FROM User u WHERE u.userName = :username")
-    void deleteByUsername(@Param("username") String username);
-
+    // Custom JPQL query over the many-to-many relationship
     @Query("""
-    SELECT t FROM Trainee t
-    JOIN Training tr ON tr.trainee.id = t.id
-    WHERE tr.trainer.user.userName = :username
-""")
+            SELECT t FROM Trainee t
+            JOIN t.trainers tr
+            WHERE tr.user.userName = :username
+            ORDER BY t.user.lastName
+            """)
     List<Trainee> findByTrainerUsername(@Param("username") String username);
-
 }

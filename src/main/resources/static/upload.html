@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profile Photo Upload</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 520px; margin: 40px auto; padding: 0 16px; color: #222; background: #fafafa; }
+        fieldset { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 20px; padding: 16px; background: #fff; }
+        label { display: block; margin: 8px 0 4px; font-size: 14px; }
+        input { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { margin-top: 12px; padding: 8px 16px; cursor: pointer; }
+        pre { background: #eee; padding: 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; }
+        img { max-width: 200px; margin-top: 12px; border-radius: 8px; display: none; }
+    </style>
+</head>
+<body>
+<h1>Profile photo upload</h1>
+
+<fieldset>
+    <legend>1. Log in</legend>
+    <form id="login">
+        <label for="username">Username</label>
+        <input id="username" name="username" value="Liam.Anderson" required>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" value="password123" required>
+        <button type="submit">Log in</button>
+    </form>
+</fieldset>
+
+<fieldset>
+    <legend>2. Upload photo</legend>
+    <!-- Classic multipart form; the script below adds the JWT header and sends the same FormData -->
+    <form id="upload" method="post" enctype="multipart/form-data">
+        <label for="file">Image (JPEG / PNG / WEBP / GIF, max 5 MB)</label>
+        <input id="file" type="file" name="file" accept="image/*" required>
+        <button type="submit">Upload</button>
+    </form>
+    <img id="preview" alt="Uploaded photo">
+</fieldset>
+
+<pre id="out">Not logged in.</pre>
+
+<script>
+    let token = null;
+    const out = document.getElementById('out');
+    const show = (obj) => out.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+
+    document.getElementById('login').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = { username: e.target.username.value, password: e.target.password.value };
+        const res = await fetch('/api/v1/auth/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        token = json.token || null;
+        show(token ? 'Logged in as ' + body.username : json);
+    });
+
+    document.getElementById('upload').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!token) { show('Log in first.'); return; }
+        const username = document.getElementById('username').value;
+        const res = await fetch('/api/v1/users/' + encodeURIComponent(username) + '/photo', {
+            method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: new FormData(e.target)
+        });
+        const json = await res.json();
+        show(json);
+        if (res.ok) {
+            // the download endpoint requires the JWT too, so fetch it and show it as a blob
+            const photo = await fetch(json.downloadUrl, { headers: { 'Authorization': 'Bearer ' + token } });
+            const img = document.getElementById('preview');
+            img.src = URL.createObjectURL(await photo.blob());
+            img.style.display = 'block';
+        }
+    });
+</script>
+</body>
+</html>

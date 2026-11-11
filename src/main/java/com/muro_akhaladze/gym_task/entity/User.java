@@ -1,5 +1,6 @@
 package com.muro_akhaladze.gym_task.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -15,7 +16,6 @@ import java.util.List;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Inheritance(strategy = InheritanceType.JOINED)
 @Table(name = "users")
 public class User implements UserDetails {
     @Id
@@ -37,6 +37,8 @@ public class User implements UserDetails {
     @Size(max = 50, message = "Username cannot exceed 50 characters")
     private String userName;
 
+    /** BCrypt hash, never the plain password. */
+    @JsonIgnore
     @Column(nullable = false)
     @NotBlank(message = "Password cannot be blank")
     private String password;
@@ -44,8 +46,12 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private boolean isActive = true;
 
+    /** Stored file name of the uploaded profile photo (inside the upload directory). */
+    @Column(length = 255)
+    private String photoPath;
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }

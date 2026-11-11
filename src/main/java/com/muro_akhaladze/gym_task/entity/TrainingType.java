@@ -1,11 +1,7 @@
 package com.muro_akhaladze.gym_task.entity;
 
-
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Getter
@@ -14,8 +10,13 @@ import lombok.Setter;
 @NoArgsConstructor
 public class TrainingType {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int trainingTypeId;
-    @Column(nullable = false, length = 50)
+
+    @Column(nullable = false, unique = true, length = 50)
     private String trainingTypeName;
+
+    public TrainingType(String trainingTypeName) {
+        this.trainingTypeName = trainingTypeName;
+    }
 }
